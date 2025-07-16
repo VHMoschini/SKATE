@@ -29,6 +29,14 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	USceneComponent* RootSceneComponent;
 
+	UPROPERTY(EditAnywhere, Category = "Skate|Push")
+	UAnimMontage* PushMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Skate|Push")
+	float PushImpulseDelay = 0.4f;
+
+
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Behavior")
 	float AccelerationRate;
@@ -61,6 +69,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Animations")
 	FRotator MeshNeutralRotation = FRotator(0.f, 90.f, 0.f);
 
+	UPROPERTY(EditAnywhere, Category = "Skate|Jump")
+	UAnimMontage* JumpMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Skate|Jump")
+	UCurveVector* JumpSkateCurve;
+
+
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -71,10 +86,7 @@ public:
 	float JumpStrength = 600.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jump")
-	float Gravity = 2000.f; 
-
-
-
+	float Gravity = 2000.f;
 
 protected:
 	virtual void BeginPlay() override;
@@ -82,6 +94,11 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
+	float JumpElapsedTime = 0.f;
+	bool bIsJumpingAnim = false;
+
+	FTimerHandle PushTimerHandle;
+	bool bIsPushing = false;
 
 	bool bIsBraking = false;
 
@@ -90,7 +107,7 @@ private:
 	bool bIsTurning = false;
 
 	float TimeSinceJump = 0.f;
-	float GroundLockDuration = 0.2f; 
+	float GroundLockDuration = 0.2f;
 
 	FVector Velocity;
 	float CurrentSpeed;
@@ -109,4 +126,5 @@ private:
 	void CheckGround();
 
 	void AlignToGround();
+	void ApplyPushImpulse();
 };

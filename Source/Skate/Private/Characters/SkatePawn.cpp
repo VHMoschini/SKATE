@@ -35,6 +35,7 @@ ASkatePawn::ASkatePawn()
 void ASkatePawn::BeginPlay()
 {
 	Super::BeginPlay();
+	CheckGround();
 }
 
 void ASkatePawn::Tick(float DeltaTime)
@@ -43,6 +44,13 @@ void ASkatePawn::Tick(float DeltaTime)
 
 	FVector Forward = GetActorForwardVector();
 	FVector NewLocation = GetActorLocation() + (Forward * CurrentSpeed * DeltaTime);
+
+	if (bIsJumpingAnim && JumpSkateCurve)
+	{
+		JumpElapsedTime += DeltaTime;
+		FVector Offset = JumpSkateCurve->GetVectorValue(JumpElapsedTime);
+		SkateMesh->SetRelativeRotation(FRotator(Offset.X, Offset.Y, Offset.Z));
+	}
 
 	if (!bIsGrounded)
 	{
@@ -105,7 +113,19 @@ void ASkatePawn::TurnRight(float Value)
 
 void ASkatePawn::Push()
 {
-	CurrentSpeed = FMath::Clamp(CurrentSpeed + AccelerationRate * GetWorld()->GetDeltaSeconds(), 0.f, MaxSpeed);
+	if (bIsPushing || !bIsGrounded || !PushMontage)
+		return;
+
+	// Toca a animação de remar
+	if (USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>())
+	{
+		SkelMesh->GetAnimInstance()->Montage_Play(PushMontage);
+	}
+
+	bIsPushing = true;
+
+	// Aplica impulso após delay
+	GetWorld()->GetTimerManager().SetTimer(PushTimerHandle, this, &ASkatePawn::ApplyPushImpulse, PushImpulseDelay, false);
 }
 
 void ASkatePawn::StartBrake()
@@ -124,7 +144,20 @@ void ASkatePawn::Jump()
 	{
 		VerticalVelocity = JumpStrength;
 		bIsGrounded = false;
-		TimeSinceJump = 0.f; 
+		TimeSinceJump = 0.f;
+
+		// Toca a montagem de pulo no personagem
+		if (USkeletalMeshComponent* SkelMesh = FindComponentByClass<USkeletalMeshComponent>())
+		{
+			if (JumpMontage)
+			{
+				SkelMesh->GetAnimInstance()->Montage_Play(JumpMontage);
+			}
+		}
+
+		// Inicia controle da curva de skate
+		bIsJumpingAnim = true;
+		JumpElapsedTime = 0.f;
 	}
 }
 
@@ -156,6 +189,7 @@ void ASkatePawn::ApplyFriction(float DeltaTime)
 			CurrentSpeed = 0.f;
 	}
 }
+
 void ASkatePawn::CheckGround()
 {
 	if (TimeSinceJump < GroundLockDuration)
@@ -195,7 +229,13 @@ void ASkatePawn::CheckGround()
 	{
 		bIsGrounded = false;
 	}
+
+	if (bIsGrounded)
+	{
+		bIsJumpingAnim = false;
+	}
 }
+
 void ASkatePawn::AlignToGround()
 {
 	FVector ActorLocation = GetActorLocation();
@@ -238,4 +278,10 @@ void ASkatePawn::AlignToGround()
 		TargetRot.Roll = 0.f;
 		SetActorRotation(FMath::RInterpTo(CurrentRot, TargetRot, GetWorld()->GetDeltaSeconds(), 10.f));
 	}
+}
+
+void ASkatePawn::ApplyPushImpulse()
+{
+	CurrentSpeed = FMath::Clamp(CurrentSpeed + AccelerationRate * GetWorld()->GetDeltaSeconds(), 0.f, MaxSpeed);
+	bIsPushing = false;
 }
